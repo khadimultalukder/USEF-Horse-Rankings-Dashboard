@@ -37,7 +37,185 @@ st.set_page_config(
     page_title="USEF Horse Rankings",
     page_icon="🐎",
     layout="wide",
+    initial_sidebar_state="collapsed",
 )
+
+
+# ---------------------------------------------------------------------------
+# Custom styles — animated KPI cards, detail card, table row styling
+# ---------------------------------------------------------------------------
+CUSTOM_CSS = """
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap');
+
+    /* ---------- Animated KPI cards ---------- */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin: 0.5rem 0 1.25rem 0;
+    }
+    @media (max-width: 900px) {
+        .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .kpi-card {
+        position: relative;
+        padding: 1.1rem 1.25rem 1rem 1.25rem;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(236, 72, 153, 0.06) 100%),
+                    rgba(255, 255, 255, 0.6);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.03);
+        transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                    box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                    border-color 0.28s ease;
+        overflow: hidden;
+        animation: kpi-fade-in 0.55s ease-out both;
+    }
+    @media (prefers-color-scheme: dark) {
+        .kpi-card {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.10) 0%, rgba(236, 72, 153, 0.08) 100%),
+                        rgba(30, 41, 59, 0.55);
+            border-color: rgba(148, 163, 184, 0.18);
+        }
+    }
+    .kpi-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: var(--accent, linear-gradient(90deg, #6366f1, #a855f7));
+        opacity: 0.95;
+    }
+    .kpi-card::after {
+        content: '';
+        position: absolute;
+        top: -40%; right: -20%;
+        width: 160px; height: 160px;
+        background: radial-gradient(circle, var(--glow, rgba(99,102,241,0.25)) 0%, transparent 70%);
+        filter: blur(20px);
+        opacity: 0.6;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+    .kpi-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(99, 102, 241, 0.25);
+        border-color: rgba(99, 102, 241, 0.4);
+    }
+    .kpi-card:hover::after { opacity: 1; }
+
+    .kpi-card.kpi-indigo::before { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+    .kpi-card.kpi-indigo { --glow: rgba(99, 102, 241, 0.30); }
+    .kpi-card.kpi-cyan::before   { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
+    .kpi-card.kpi-cyan   { --glow: rgba(34, 211, 238, 0.30); }
+    .kpi-card.kpi-pink::before   { background: linear-gradient(90deg, #ec4899, #f472b6); }
+    .kpi-card.kpi-pink   { --glow: rgba(236, 72, 153, 0.30); }
+    .kpi-card.kpi-amber::before  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .kpi-card.kpi-amber  { --glow: rgba(245, 158, 11, 0.30); }
+
+    .kpi-icon {
+        font-size: 1.35rem;
+        line-height: 1;
+        margin-bottom: 0.4rem;
+        display: inline-block;
+        animation: kpi-icon-pop 0.7s ease-out both;
+    }
+    .kpi-label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #64748b;
+        margin-bottom: 0.3rem;
+    }
+    .kpi-value {
+        font-family: 'Space Grotesk', 'Inter', sans-serif;
+        font-size: 1.85rem;
+        font-weight: 700;
+        line-height: 1.1;
+        color: #0f172a;
+    }
+    @media (prefers-color-scheme: dark) {
+        .kpi-value { color: #f8fafc; }
+    }
+    .kpi-sub {
+        font-size: 0.72rem;
+        color: #94a3b8;
+        margin-top: 0.3rem;
+    }
+
+    @keyframes kpi-fade-in {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes kpi-icon-pop {
+        0%   { opacity: 0; transform: scale(0.6) rotate(-10deg); }
+        60%  { opacity: 1; transform: scale(1.15) rotate(4deg); }
+        100% { opacity: 1; transform: scale(1) rotate(0); }
+    }
+    /* Stagger each card */
+    .kpi-card:nth-child(1) { animation-delay: 0.00s; }
+    .kpi-card:nth-child(2) { animation-delay: 0.08s; }
+    .kpi-card:nth-child(3) { animation-delay: 0.16s; }
+    .kpi-card:nth-child(4) { animation-delay: 0.24s; }
+
+    /* ---------- Detail card (selected row) ---------- */
+    .detail-card {
+        padding: 1rem 1.25rem;
+        margin: 0.75rem 0 0.25rem 0;
+        border-radius: 14px;
+        border: 1px solid rgba(168, 85, 247, 0.35);
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.10) 0%, rgba(236, 72, 153, 0.10) 100%);
+        animation: kpi-fade-in 0.4s ease-out both;
+    }
+    .detail-card .detail-title {
+        font-family: 'Space Grotesk', 'Inter', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0 0 0.15rem 0;
+    }
+    .detail-card .detail-sub {
+        font-size: 0.82rem;
+        color: #64748b;
+    }
+
+    /* ---------- DataFrame row styling ---------- */
+    [data-testid="stDataFrame"] {
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    }
+    /* Zebra rows */
+    [data-testid="stDataFrame"] [role="row"]:nth-child(even) > [role="gridcell"] {
+        background: rgba(99, 102, 241, 0.04) !important;
+    }
+    /* Hover highlight */
+    [data-testid="stDataFrame"] [role="row"]:hover > [role="gridcell"] {
+        background: rgba(168, 85, 247, 0.10) !important;
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+    /* Header */
+    [data-testid="stDataFrame"] [role="columnheader"] {
+        background: linear-gradient(180deg, rgba(99, 102, 241, 0.10), rgba(99, 102, 241, 0.04)) !important;
+        font-weight: 600 !important;
+        color: #1e293b !important;
+        border-bottom: 1px solid rgba(99, 102, 241, 0.25) !important;
+    }
+    @media (prefers-color-scheme: dark) {
+        [data-testid="stDataFrame"] [role="columnheader"] {
+            color: #e2e8f0 !important;
+            background: linear-gradient(180deg, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0.08)) !important;
+        }
+        [data-testid="stDataFrame"] [role="row"]:nth-child(even) > [role="gridcell"] {
+            background: rgba(99, 102, 241, 0.07) !important;
+        }
+    }
+</style>
+"""
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
@@ -143,76 +321,81 @@ if df.empty:
     st.stop()
 
 # ---------------------------------------------------------------------------
-# UI: Sidebar filters
+# UI: Filters (on main page)
 # ---------------------------------------------------------------------------
-st.sidebar.header("🔎 Search & Filters")
+with st.expander("🔎 Search & Filters", expanded=True):
+    # Row 1: horse picker + free-text search
+    r1c1, r1c2 = st.columns([1, 1])
+    horse_names_available = sorted(
+        df["horse_name"].dropna().astype(str).unique().tolist()
+    ) if "horse_name" in df.columns else []
+    with r1c1:
+        selected_horse = st.selectbox(
+            "Pick horse (autocomplete)",
+            options=horse_names_available,
+            index=None,
+            placeholder="Start typing a horse name…",
+            help="Type any part of the name to filter the list.",
+        )
+    with r1c2:
+        search_query = st.text_input(
+            "Or free-text search (name or ID)",
+            placeholder="e.g. ADLER or 4OwKggwWH28",
+        ).strip()
 
-# Autocomplete: type to filter the dropdown of all horse names
-horse_names_available = sorted(
-    df["horse_name"].dropna().astype(str).unique().tolist()
-) if "horse_name" in df.columns else []
-selected_horse = st.sidebar.selectbox(
-    "Pick horse (autocomplete)",
-    options=horse_names_available,
-    index=None,
-    placeholder="Start typing a horse name…",
-    help="Type any part of the name to filter the list.",
-)
+    # Row 2: years + sections + award category
+    r2c1, r2c2, r2c3 = st.columns(3)
+    years_available = sorted(
+        [int(y) for y in df["competition_year"].dropna().unique()], reverse=True
+    ) if "competition_year" in df.columns else []
+    with r2c1:
+        selected_years = st.multiselect(
+            "Season (competition year)",
+            options=years_available,
+            default=years_available,
+        )
+    sections_available = sorted(df["section"].dropna().unique().tolist()) \
+        if "section" in df.columns else []
+    with r2c2:
+        selected_sections: Optional[List[str]] = st.multiselect(
+            "Section",
+            options=sections_available,
+            default=[],
+            help="Leave empty to include all sections",
+        )
+    awards_available = sorted(df["award_category"].dropna().unique().tolist()) \
+        if "award_category" in df.columns else []
+    with r2c3:
+        selected_awards: Optional[List[str]] = st.multiselect(
+            "Award category",
+            options=awards_available,
+            default=[],
+            help="Leave empty to include all award categories",
+        )
 
-# Free-text search (still works for horse IDs or partial matches)
-search_query = st.sidebar.text_input(
-    "Or free-text search (name or ID)",
-    placeholder="e.g. ADLER or 4OwKggwWH28",
-).strip()
-
-# Season (competition_year)
-years_available = sorted(
-    [int(y) for y in df["competition_year"].dropna().unique()], reverse=True
-) if "competition_year" in df.columns else []
-selected_years = st.sidebar.multiselect(
-    "Season (competition year)",
-    options=years_available,
-    default=years_available,
-)
-
-# Section
-sections_available = sorted(df["section"].dropna().unique().tolist()) \
-    if "section" in df.columns else []
-selected_sections: Optional[List[str]] = st.sidebar.multiselect(
-    "Section",
-    options=sections_available,
-    default=[],
-    help="Leave empty to include all sections",
-)
-
-# Award category
-awards_available = sorted(df["award_category"].dropna().unique().tolist()) \
-    if "award_category" in df.columns else []
-selected_awards: Optional[List[str]] = st.sidebar.multiselect(
-    "Award category",
-    options=awards_available,
-    default=[],
-    help="Leave empty to include all award categories",
-)
-
-# Min points slider
-if "nat_points_good" in df.columns and df["nat_points_good"].notna().any():
-    pmin = float(df["nat_points_good"].min())
-    pmax = float(df["nat_points_good"].max())
-    min_points = st.sidebar.slider(
-        "Minimum national points",
-        min_value=float(round(pmin, 2)),
-        max_value=float(round(pmax, 2)),
-        value=float(round(pmin, 2)),
-        step=1.0,
-    )
-else:
-    min_points = None
-
-st.sidebar.divider()
-if st.sidebar.button("🔄 Refresh data from Supabase"):
-    load_rankings.clear()
-    st.rerun()
+    # Row 3: min points slider + refresh button
+    r3c1, r3c2 = st.columns([3, 1])
+    if "nat_points_good" in df.columns and df["nat_points_good"].notna().any():
+        pmin = float(df["nat_points_good"].min())
+        pmax = float(df["nat_points_good"].max())
+        with r3c1:
+            min_points = st.slider(
+                "Minimum national points",
+                min_value=float(round(pmin, 2)),
+                max_value=float(round(pmax, 2)),
+                value=float(round(pmin, 2)),
+                step=1.0,
+            )
+    else:
+        min_points = None
+        with r3c1:
+            st.caption("No national points data available.")
+    with r3c2:
+        st.write("")  # spacer to align with slider
+        st.write("")
+        if st.button("🔄 Refresh data", use_container_width=True):
+            load_rankings.clear()
+            st.rerun()
 
 
 # ---------------------------------------------------------------------------
@@ -245,22 +428,48 @@ if min_points is not None and "nat_points_good" in filtered.columns:
 
 
 # ---------------------------------------------------------------------------
-# UI: KPIs
+# UI: KPIs (animated cards)
 # ---------------------------------------------------------------------------
-k1, k2, k3, k4 = st.columns(4)
-k1.metric("Rows", f"{len(filtered):,}", delta=f"of {len(df):,} total")
-k2.metric(
-    "Unique horses",
-    f"{filtered['horse_id'].nunique():,}" if "horse_id" in filtered.columns else "—",
-)
-k3.metric(
-    "Award categories",
-    f"{filtered['award_category'].nunique():,}" if "award_category" in filtered.columns else "—",
-)
-if "nat_points_good" in filtered.columns and len(filtered):
-    k4.metric("Avg national points", f"{filtered['nat_points_good'].mean():.2f}")
+_kpi_rows = len(filtered)
+_kpi_total = len(df)
+_kpi_unique = f"{filtered['horse_id'].nunique():,}" if "horse_id" in filtered.columns else "—"
+_kpi_awards = f"{filtered['award_category'].nunique():,}" if "award_category" in filtered.columns else "—"
+if "nat_points_good" in filtered.columns and len(filtered) and filtered["nat_points_good"].notna().any():
+    _kpi_avg = f"{filtered['nat_points_good'].mean():.2f}"
 else:
-    k4.metric("Avg national points", "—")
+    _kpi_avg = "—"
+
+st.markdown(
+    f"""
+    <div class="kpi-grid">
+        <div class="kpi-card kpi-indigo">
+            <div class="kpi-icon">📊</div>
+            <div class="kpi-label">Rows</div>
+            <div class="kpi-value">{_kpi_rows:,}</div>
+            <div class="kpi-sub">of {_kpi_total:,} total</div>
+        </div>
+        <div class="kpi-card kpi-cyan">
+            <div class="kpi-icon">🐎</div>
+            <div class="kpi-label">Unique horses</div>
+            <div class="kpi-value">{_kpi_unique}</div>
+            <div class="kpi-sub">in current filter</div>
+        </div>
+        <div class="kpi-card kpi-pink">
+            <div class="kpi-icon">🏆</div>
+            <div class="kpi-label">Award categories</div>
+            <div class="kpi-value">{_kpi_awards}</div>
+            <div class="kpi-sub">distinct categories</div>
+        </div>
+        <div class="kpi-card kpi-amber">
+            <div class="kpi-icon">⚡</div>
+            <div class="kpi-label">Avg national points</div>
+            <div class="kpi-value">{_kpi_avg}</div>
+            <div class="kpi-sub">across filtered rows</div>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.divider()
 
@@ -292,6 +501,10 @@ display_df = filtered[display_cols].copy()
 
 # Render with link columns when possible
 column_config = {}
+if "competition_year" in display_df.columns:
+    column_config["competition_year"] = st.column_config.NumberColumn(
+        "Year", format="%d", width="small"
+    )
 if "horse_link" in display_df.columns:
     column_config["horse_link"] = st.column_config.LinkColumn(
         "USEF page", display_text="Open"
@@ -324,8 +537,18 @@ if selected_rows:
     row_idx = selected_rows[0]
     row = display_df.iloc[row_idx]
     horse = row.get("horse_name", "—")
-    st.success(f"Selected: **{horse}**  (row {row_idx + 1} of {len(display_df):,})")
-    with st.expander("Row details", expanded=True):
+    pts = row.get("nat_points_good", None)
+    pts_str = f" · {pts:.2f} pts" if isinstance(pts, (int, float)) and pd.notna(pts) else ""
+    st.markdown(
+        f"""
+        <div class="detail-card">
+            <div class="detail-title">✨ {horse}<span style="color:#94a3b8;font-weight:500;">{pts_str}</span></div>
+            <div class="detail-sub">Row {row_idx + 1} of {len(display_df):,}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    with st.expander("📋 Row details", expanded=True):
         # Two-column display of the selected row
         c1, c2 = st.columns(2)
         items = list(row.items())
