@@ -180,6 +180,123 @@ CUSTOM_CSS = """
         color: #64748b;
     }
 
+    /* ---------- Row details — grouped field grid ---------- */
+    .detail-section {
+        font-family: 'Space Grotesk', 'Inter', sans-serif;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #a855f7;
+        margin: 1.1rem 0 0.55rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .detail-section::before {
+        content: '';
+        width: 4px;
+        height: 14px;
+        background: linear-gradient(180deg, #6366f1, #ec4899);
+        border-radius: 2px;
+    }
+    .detail-section .section-line {
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(90deg, rgba(168,85,247,0.25), transparent);
+    }
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 0.6rem;
+    }
+    .detail-field {
+        padding: 0.7rem 0.85rem;
+        border-radius: 12px;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(236, 72, 153, 0.04) 100%),
+                    rgba(30, 41, 59, 0.35);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+        transition: border-color 0.2s ease, transform 0.2s ease;
+        animation: kpi-fade-in 0.35s ease-out both;
+    }
+    @media (prefers-color-scheme: light) {
+        .detail-field {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(236, 72, 153, 0.04) 100%),
+                        rgba(255, 255, 255, 0.85);
+        }
+    }
+    .detail-field:hover {
+        border-color: rgba(168, 85, 247, 0.45);
+        transform: translateY(-1px);
+    }
+    .detail-field.detail-field--wide { grid-column: 1 / -1; }
+    .detail-label {
+        font-size: 0.66rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #94a3b8;
+        margin-bottom: 0.3rem;
+    }
+    .detail-value {
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #e2e8f0;
+        word-break: break-word;
+    }
+    @media (prefers-color-scheme: light) {
+        .detail-value { color: #0f172a; }
+    }
+    .detail-value.detail-value--big {
+        font-family: 'Space Grotesk', 'Inter', sans-serif;
+        font-size: 1.35rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #6366f1, #ec4899);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .detail-value.detail-value--muted { color: #94a3b8; font-style: italic; }
+    .detail-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        margin-top: 0.2rem;
+    }
+    .detail-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.2rem 0.6rem;
+        border-radius: 999px;
+        background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.18));
+        border: 1px solid rgba(168,85,247,0.35);
+        color: #e9d5ff;
+        font-size: 0.78rem;
+        font-weight: 600;
+        font-family: 'Space Grotesk', monospace;
+    }
+    @media (prefers-color-scheme: light) {
+        .detail-chip { color: #6b21a8; }
+    }
+    .detail-link-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.4rem 0.85rem;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #6366f1, #a855f7);
+        color: white !important;
+        font-weight: 600;
+        font-size: 0.82rem;
+        text-decoration: none !important;
+        transition: transform 0.15s ease, box-shadow 0.2s ease;
+        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    }
+    .detail-link-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 14px rgba(99, 102, 241, 0.45);
+    }
+
     /* ---------- DataFrame row styling ---------- */
     [data-testid="stDataFrame"] {
         border-radius: 14px;
@@ -549,14 +666,101 @@ if selected_rows:
         unsafe_allow_html=True,
     )
     with st.expander("📋 Row details", expanded=True):
-        # Two-column display of the selected row
-        c1, c2 = st.columns(2)
-        items = list(row.items())
-        half = (len(items) + 1) // 2
-        for k, v in items[:half]:
-            c1.markdown(f"**{k}**: {v}")
-        for k, v in items[half:]:
-            c2.markdown(f"**{k}**: {v}")
+        import html as _html
+
+        LABELS = {
+            "competition_year": "Year",
+            "horse_name": "Horse",
+            "horse_id": "Horse ID",
+            "section": "Section",
+            "award_category": "Award category",
+            "nat_points_good": "National points",
+            "show_count": "Show count",
+            "shows": "Shows",
+            "start_date": "Start date",
+            "end_date": "End date",
+            "horse_link": "USEF page",
+            "pdf_download_link": "PDF report",
+            "scraped_at": "Scraped at",
+        }
+        GROUPS = [
+            ("🐎 Identity",    ["horse_name", "horse_id", "section", "award_category"]),
+            ("⚡ Performance", ["nat_points_good", "show_count", "shows"]),
+            ("📅 Period",      ["competition_year", "start_date", "end_date"]),
+            ("🔗 Links",       ["horse_link", "pdf_download_link"]),
+            ("ℹ️ Meta",        ["scraped_at"]),
+        ]
+
+        def _fmt_value(key, value):
+            """Return HTML for the value side of a detail-field card."""
+            if value is None or (isinstance(value, float) and pd.isna(value)) or value == "":
+                return '<div class="detail-value detail-value--muted">—</div>'
+            # Big highlighted number for points
+            if key == "nat_points_good" and isinstance(value, (int, float)):
+                return f'<div class="detail-value detail-value--big">{value:.2f}</div>'
+            # Show scores as chips
+            if key == "shows":
+                items = []
+                if isinstance(value, (list, tuple)):
+                    items = list(value)
+                else:
+                    s = str(value).strip().strip("[]")
+                    if s:
+                        items = [p.strip() for p in s.split(",") if p.strip()]
+                if not items:
+                    return '<div class="detail-value detail-value--muted">—</div>'
+                chips = "".join(
+                    f'<span class="detail-chip">{_html.escape(str(it))}</span>'
+                    for it in items
+                )
+                return f'<div class="detail-chips">{chips}</div>'
+            # Links as buttons
+            if key in ("horse_link", "pdf_download_link"):
+                url = _html.escape(str(value), quote=True)
+                label = "Open USEF page ↗" if key == "horse_link" else "Open PDF ↗"
+                return f'<a class="detail-link-btn" href="{url}" target="_blank" rel="noopener">{label}</a>'
+            # Default
+            return f'<div class="detail-value">{_html.escape(str(value))}</div>'
+
+        # Render grouped sections
+        section_html_parts = []
+        rendered_keys = set()
+        for group_label, keys in GROUPS:
+            keys_present = [k for k in keys if k in row.index]
+            if not keys_present:
+                continue
+            cards = []
+            for k in keys_present:
+                rendered_keys.add(k)
+                wide_cls = " detail-field--wide" if k in ("shows", "section", "award_category") else ""
+                cards.append(
+                    f'<div class="detail-field{wide_cls}">'
+                    f'<div class="detail-label">{_html.escape(LABELS.get(k, k))}</div>'
+                    f'{_fmt_value(k, row.get(k))}'
+                    f'</div>'
+                )
+            section_html_parts.append(
+                f'<div class="detail-section">{group_label}<span class="section-line"></span></div>'
+                f'<div class="detail-grid">{"".join(cards)}</div>'
+            )
+
+        # Catch-all section for any unexpected columns
+        leftover = [k for k in row.index if k not in rendered_keys]
+        if leftover:
+            cards = []
+            for k in leftover:
+                cards.append(
+                    f'<div class="detail-field">'
+                    f'<div class="detail-label">{_html.escape(LABELS.get(k, str(k)))}</div>'
+                    f'{_fmt_value(k, row.get(k))}'
+                    f'</div>'
+                )
+            section_html_parts.append(
+                f'<div class="detail-section">📦 Other<span class="section-line"></span></div>'
+                f'<div class="detail-grid">{"".join(cards)}</div>'
+            )
+
+        st.markdown("".join(section_html_parts), unsafe_allow_html=True)
 else:
     st.caption("👆 Click any row to highlight it and see its details.")
 
