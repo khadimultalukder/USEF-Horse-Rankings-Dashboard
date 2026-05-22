@@ -6,6 +6,8 @@ A Streamlit dashboard for the `usef_horse_rankings` table in Supabase.
 Features:
 - Search by horse name or horse ID
 - Filters: competition year (season), section, award category
+- Date range filter (start_date / end_date)
+- Top-15 highest-scoring shows toggle
 - Sortable data table
 - CSV export of filtered results
 - Summary KPIs
@@ -438,6 +440,19 @@ if df.empty:
     st.stop()
 
 # ---------------------------------------------------------------------------
+# Compute global date bounds for the date range pickers
+# ---------------------------------------------------------------------------
+import datetime
+
+_has_start_date = "start_date" in df.columns and df["start_date"].notna().any()
+_has_end_date   = "end_date"   in df.columns and df["end_date"].notna().any()
+
+_start_date_min = df["start_date"].dropna().min() if _has_start_date else datetime.date(2000, 1, 1)
+_start_date_max = df["start_date"].dropna().max() if _has_start_date else datetime.date.today()
+_end_date_min   = df["end_date"].dropna().min()   if _has_end_date   else datetime.date(2000, 1, 1)
+_end_date_max   = df["end_date"].dropna().max()   if _has_end_date   else datetime.date.today()
+
+# ---------------------------------------------------------------------------
 # UI: Filters (on main page)
 # ---------------------------------------------------------------------------
 with st.expander("🔎 Search & Filters", expanded=True):
@@ -490,25 +505,42 @@ with st.expander("🔎 Search & Filters", expanded=True):
             help="Leave empty to include all award categories",
         )
 
-    # Row 3: min points slider + refresh button
-    r3c1, r3c2 = st.columns([3, 1])
-    if "nat_points_good" in df.columns and df["nat_points_good"].notna().any():
-        pmin = float(df["nat_points_good"].min())
-        pmax = float(df["nat_points_good"].max())
-        with r3c1:
-            min_points = st.slider(
-                "Minimum national points",
-                min_value=float(round(pmin, 2)),
-                max_value=float(round(pmax, 2)),
-                value=float(round(pmin, 2)),
-                step=1.0,
-            )
-    else:
-        min_points = None
-        with r3c1:
-            st.caption("No national points data available.")
-    with r3c2:
-        st.write("")  # spacer to align with slider
+    # Row 3: Start Date / End Date single pickers
+    st.markdown("**📅 Date Filters**")
+    date_col1, date_col2 = st.columns(2)
+    with date_col1:
+        filter_start_date = st.date_input(
+            "Start Date",
+            value=None,
+            min_value=_start_date_min,
+            max_value=_start_date_max,
+            help="Show rows whose start date is on or after this date. Leave blank for no filter.",
+            key="filter_start_date",
+        )
+    with date_col2:
+        filter_end_date = st.date_input(
+            "End Date",
+            value=None,
+            min_value=_end_date_min,
+            max_value=_end_date_max,
+            help="Show rows whose end date is on or before this date. Leave blank for no filter.",
+            key="filter_end_date",
+        )
+
+    # Row 4: top-15 toggle + refresh button
+    r4c1, r4c2 = st.columns([1, 1])
+
+    with r4c1:
+        st.write("")  # vertical spacer
+        st.write("")
+        top15_enabled = st.toggle(
+            "🏅 Top 15 shows",
+            value=False,
+            help="Limit results to the 15 highest-scoring shows (by national points) within the current filter.",
+        )
+
+    with r4c2:
+        st.write("")  # spacer
         st.write("")
         if st.button("🔄 Refresh data", use_container_width=True):
             load_rankings.clear()
@@ -540,8 +572,27 @@ if selected_sections:
 if selected_awards:
     filtered = filtered[filtered["award_category"].isin(selected_awards)]
 
-if min_points is not None and "nat_points_good" in filtered.columns:
-    filtered = filtered[filtered["nat_points_good"].fillna(0) >= min_points]
+# Start date filter — show rows where start_date >= selected date
+if _has_start_date and filter_start_date:
+    filtered = filtered[
+        filtered["start_date"].notna() &
+        (filtered["start_date"] >= filter_start_date)
+    ]
+
+# End date filter — show rows where end_date <= selected date
+if _has_end_date and filter_end_date:
+    filtered = filtered[
+        filtered["end_date"].notna() &
+        (filtered["end_date"] <= filter_end_date)
+    ]
+
+# Top-15 filter — applied LAST so it respects all other filters
+if top15_enabled and "nat_points_good" in filtered.columns:
+    filtered = (
+        filtered
+        .sort_values("nat_points_good", ascending=False)
+        .head(15)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -594,7 +645,8 @@ st.divider()
 # ---------------------------------------------------------------------------
 # UI: Results table
 # ---------------------------------------------------------------------------
-st.subheader(f"Results ({len(filtered):,})")
+_top15_label = " — Top 15 by national points" if top15_enabled else ""
+st.subheader(f"Results ({len(filtered):,}){_top15_label}")
 
 preferred_cols = [
     "competition_year",
