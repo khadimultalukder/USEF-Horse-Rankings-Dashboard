@@ -536,7 +536,7 @@ with st.expander("🔎 Search & Filters", expanded=True):
         top15_enabled = st.toggle(
             "🏅 Top 15 shows",
             value=False,
-            help="Limit results to the 15 highest-scoring shows (by national points) within the current filter.",
+            help="For horses with more than 15 shows, recalculates national points using only their top 15 highest-scoring shows. All horses are still shown.",
         )
 
     with r4c2:
@@ -586,13 +586,18 @@ if _has_end_date and filter_end_date:
         (filtered["end_date"] <= filter_end_date)
     ]
 
-# Top-15 filter — applied LAST so it respects all other filters
-if top15_enabled and "nat_points_good" in filtered.columns:
-    filtered = (
-        filtered
-        .sort_values("nat_points_good", ascending=False)
-        .head(15)
-    )
+# Top-15 recalculation — for horses with >15 shows, recalculate nat_points_good
+# using only their top 15 highest-scoring shows. All horses remain in the table.
+if top15_enabled and "shows" in filtered.columns:
+    def _top15_points(row):
+        shows = row["shows"]
+        if not isinstance(shows, list) or len(shows) == 0:
+            return row["nat_points_good"]
+        scores = sorted([s for s in shows if isinstance(s, (int, float))], reverse=True)
+        return round(sum(scores[:15]), 4)
+
+    filtered = filtered.copy()
+    filtered["nat_points_good"] = filtered.apply(_top15_points, axis=1)
 
 
 # ---------------------------------------------------------------------------
@@ -645,7 +650,7 @@ st.divider()
 # ---------------------------------------------------------------------------
 # UI: Results table
 # ---------------------------------------------------------------------------
-_top15_label = " — Top 15 by national points" if top15_enabled else ""
+_top15_label = " — Nat. points recalculated using top 15 shows" if top15_enabled else ""
 st.subheader(f"Results ({len(filtered):,}){_top15_label}")
 
 preferred_cols = [
