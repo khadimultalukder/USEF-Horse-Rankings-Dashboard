@@ -514,6 +514,7 @@ with st.expander("🔎 Search & Filters", expanded=True):
             value=None,
             min_value=datetime.date(2000, 1, 1),
             max_value=datetime.date(2100, 12, 31),
+            format="MM/DD/YYYY",
             help="Show records whose competition period includes or starts from this date. Leave blank for no filter.",
             key="filter_start_date",
         )
@@ -523,6 +524,7 @@ with st.expander("🔎 Search & Filters", expanded=True):
             value=None,
             min_value=datetime.date(2000, 1, 1),
             max_value=datetime.date(2100, 12, 31),
+            format="MM/DD/YYYY",
             help="Show records whose competition period includes or ends by this date. Leave blank for no filter.",
             key="filter_end_date",
         )
