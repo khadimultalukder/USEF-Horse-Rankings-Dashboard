@@ -512,18 +512,18 @@ with st.expander("🔎 Search & Filters", expanded=True):
         filter_start_date = st.date_input(
             "Start Date",
             value=None,
-            min_value=_start_date_min,
-            max_value=_start_date_max,
-            help="Show rows whose start date is on or after this date. Leave blank for no filter.",
+            min_value=datetime.date(2000, 1, 1),
+            max_value=datetime.date(2100, 12, 31),
+            help="Show records whose competition period includes or starts from this date. Leave blank for no filter.",
             key="filter_start_date",
         )
     with date_col2:
         filter_end_date = st.date_input(
             "End Date",
             value=None,
-            min_value=_end_date_min,
-            max_value=_end_date_max,
-            help="Show rows whose end date is on or before this date. Leave blank for no filter.",
+            min_value=datetime.date(2000, 1, 1),
+            max_value=datetime.date(2100, 12, 31),
+            help="Show records whose competition period includes or ends by this date. Leave blank for no filter.",
             key="filter_end_date",
         )
 
@@ -572,19 +572,15 @@ if selected_sections:
 if selected_awards:
     filtered = filtered[filtered["award_category"].isin(selected_awards)]
 
-# Start date filter — show rows where start_date >= selected date
-if _has_start_date and filter_start_date:
-    filtered = filtered[
-        filtered["start_date"].notna() &
-        (filtered["start_date"] >= filter_start_date)
-    ]
-
-# End date filter — show rows where end_date <= selected date
-if _has_end_date and filter_end_date:
-    filtered = filtered[
-        filtered["end_date"].notna() &
-        (filtered["end_date"] <= filter_end_date)
-    ]
+# Date overlap filter — show records whose competition period overlaps with the selected range.
+# Overlap condition: record.start_date <= filter_end_date AND record.end_date >= filter_start_date
+if filter_start_date or filter_end_date:
+    mask = pd.Series([True] * len(filtered), index=filtered.index)
+    if filter_start_date and _has_end_date:
+        mask &= filtered["end_date"].notna() & (filtered["end_date"] >= filter_start_date)
+    if filter_end_date and _has_start_date:
+        mask &= filtered["start_date"].notna() & (filtered["start_date"] <= filter_end_date)
+    filtered = filtered[mask]
 
 # Top-15 recalculation — for horses with >15 shows, recalculate nat_points_good
 # using only their top 15 highest-scoring shows. All horses remain in the table.
