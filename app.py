@@ -589,19 +589,29 @@ if filter_start_date or filter_end_date:
     filtered = filtered[mask]
 
 # Recalculate nat_points_good from the shows column every time.
+# Always compute all-shows sum first (used as highlight reference).
 # Toggle OFF → sum all shows | Toggle ON → sort descending, sum top 15 highest values.
 if "shows" in filtered.columns:
-    def _calc_points(row):
+    def _sum_all_shows(row):
         shows = row["shows"]
         if not isinstance(shows, list) or len(shows) == 0:
             return row["nat_points_good"]
         scores = [s for s in shows if isinstance(s, (int, float))]
-        if top15_enabled:
-            scores = sorted(scores, reverse=True)[:15]
         return round(sum(scores), 4)
 
     filtered = filtered.copy()
-    filtered["nat_points_good"] = filtered.apply(_calc_points, axis=1)
+    filtered["_nat_all_shows"] = filtered.apply(_sum_all_shows, axis=1)
+
+    if top15_enabled:
+        def _top15_points(row):
+            shows = row["shows"]
+            if not isinstance(shows, list) or len(shows) == 0:
+                return row["nat_points_good"]
+            scores = sorted([s for s in shows if isinstance(s, (int, float))], reverse=True)
+            return round(sum(scores[:15]), 4)
+        filtered["nat_points_good"] = filtered.apply(_top15_points, axis=1)
+    else:
+        filtered["nat_points_good"] = filtered["_nat_all_shows"]
 
 
 # ---------------------------------------------------------------------------
@@ -676,7 +686,11 @@ preferred_cols = [
 display_cols = [c for c in preferred_cols if c in filtered.columns] + \
                [c for c in filtered.columns if c not in preferred_cols]
 
+display_cols = [c for c in display_cols if c != '_nat_all_shows']
 display_df = filtered[display_cols].copy()
+# Keep _nat_all_shows in filtered for highlight comparison
+if '_nat_all_shows' in filtered.columns:
+    display_df['_nat_all_shows'] = filtered['_nat_all_shows']
 
 # Render with link columns when possible
 column_config = {}
@@ -701,8 +715,22 @@ if "nat_points_original" in display_df.columns:
         "Nat. points (DB)", format="%.2f"
     )
 
+# Highlight nat_points_good cell when toggle is ON and value changed vs DB original
+def _highlight_changed(df):
+    styles = pd.DataFrame("", index=df.index, columns=df.columns)
+    if (
+        top15_enabled
+        and "nat_points_good" in df.columns
+        and "_nat_all_shows" in df.columns
+    ):
+        changed = df["nat_points_good"].round(4) != df["_nat_all_shows"].round(4)
+        styles.loc[changed, "nat_points_good"] = "background-color: rgba(99, 102, 241, 0.25); color: #6366f1; font-weight: 700;"
+    return styles
+
+styled_df = display_df.style.apply(_highlight_changed, axis=None)
+
 event = st.dataframe(
-    display_df,
+    styled_df,
     use_container_width=True,
     hide_index=True,
     column_config=column_config,
