@@ -538,7 +538,7 @@ with st.expander("🔎 Search & Filters", expanded=True):
         top15_enabled = st.toggle(
             "🏅 Top 15 shows",
             value=False,
-            help="For horses with more than 15 shows, recalculates national points using only their top 15 highest-scoring shows. All horses are still shown.",
+            help="For horses with more than 15 shows, recalculates national points using only the first 15 shows (in order). All horses are still shown.",
         )
 
     with r4c2:
@@ -591,7 +591,7 @@ if top15_enabled and "shows" in filtered.columns:
         shows = row["shows"]
         if not isinstance(shows, list) or len(shows) == 0:
             return row["nat_points_good"]
-        scores = sorted([s for s in shows if isinstance(s, (int, float))], reverse=True)
+        scores = [s for s in shows if isinstance(s, (int, float))]
         return round(sum(scores[:15]), 4)
 
     filtered = filtered.copy()
@@ -648,7 +648,7 @@ st.divider()
 # ---------------------------------------------------------------------------
 # UI: Results table
 # ---------------------------------------------------------------------------
-_top15_label = " — Nat. points recalculated using top 15 shows" if top15_enabled else ""
+_top15_label = " — Nat. points recalculated using first 15 shows" if top15_enabled else ""
 st.subheader(f"Results ({len(filtered):,}){_top15_label}")
 
 preferred_cols = [
