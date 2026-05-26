@@ -416,6 +416,10 @@ def load_rankings() -> pd.DataFrame:
     for col in ("nat_points_good",):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    # Backup original nat_points_good from DB before any recalculation
+    if "nat_points_good" in df.columns:
+        df["nat_points_original"] = df["nat_points_good"]
     for col in ("show_count", "competition_year"):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
@@ -538,7 +542,7 @@ with st.expander("🔎 Search & Filters", expanded=True):
         top15_enabled = st.toggle(
             "🏅 Top 15 shows",
             value=False,
-            help="For horses with more than 15 shows, recalculates national points using only the first 15 shows (in order). All horses are still shown.",
+            help="OFF: national points = sum of ALL shows. ON: national points = sum of the top 15 highest-scoring shows.",
         )
 
     with r4c2:
@@ -584,18 +588,20 @@ if filter_start_date or filter_end_date:
         mask &= filtered["start_date"].notna() & (filtered["start_date"] <= filter_end_date)
     filtered = filtered[mask]
 
-# Top-15 recalculation — for horses with >15 shows, recalculate nat_points_good
-# using only their top 15 highest-scoring shows. All horses remain in the table.
-if top15_enabled and "shows" in filtered.columns:
-    def _top15_points(row):
+# Recalculate nat_points_good from the shows column every time.
+# Toggle OFF → sum all shows | Toggle ON → sort descending, sum top 15 highest values.
+if "shows" in filtered.columns:
+    def _calc_points(row):
         shows = row["shows"]
         if not isinstance(shows, list) or len(shows) == 0:
             return row["nat_points_good"]
         scores = [s for s in shows if isinstance(s, (int, float))]
-        return round(sum(scores[:15]), 4)
+        if top15_enabled:
+            scores = sorted(scores, reverse=True)[:15]
+        return round(sum(scores), 4)
 
     filtered = filtered.copy()
-    filtered["nat_points_good"] = filtered.apply(_top15_points, axis=1)
+    filtered["nat_points_good"] = filtered.apply(_calc_points, axis=1)
 
 
 # ---------------------------------------------------------------------------
@@ -648,7 +654,7 @@ st.divider()
 # ---------------------------------------------------------------------------
 # UI: Results table
 # ---------------------------------------------------------------------------
-_top15_label = " — Nat. points recalculated using first 15 shows" if top15_enabled else ""
+_top15_label = " — Nat. points = top 15 highest shows" if top15_enabled else " — Nat. points = all shows"
 st.subheader(f"Results ({len(filtered):,}){_top15_label}")
 
 preferred_cols = [
@@ -658,6 +664,7 @@ preferred_cols = [
     "section",
     "award_category",
     "nat_points_good",
+    "nat_points_original",
     "show_count",
     "start_date",
     "end_date",
@@ -688,6 +695,10 @@ if "pdf_download_link" in display_df.columns:
 if "nat_points_good" in display_df.columns:
     column_config["nat_points_good"] = st.column_config.NumberColumn(
         "Nat. points", format="%.2f"
+    )
+if "nat_points_original" in display_df.columns:
+    column_config["nat_points_original"] = st.column_config.NumberColumn(
+        "Nat. points (DB)", format="%.2f"
     )
 
 event = st.dataframe(
@@ -730,6 +741,7 @@ if selected_rows:
             "section": "Section",
             "award_category": "Award category",
             "nat_points_good": "National points",
+            "nat_points_original": "Nat. points (DB original)",
             "show_count": "Show count",
             "shows": "Shows",
             "start_date": "Start date",
@@ -740,7 +752,7 @@ if selected_rows:
         }
         GROUPS = [
             ("🐎 Identity",    ["horse_name", "horse_id", "section", "award_category"]),
-            ("⚡ Performance", ["nat_points_good", "show_count", "shows"]),
+            ("⚡ Performance", ["nat_points_good", "nat_points_original", "show_count", "shows"]),
             ("📅 Period",      ["competition_year", "start_date", "end_date"]),
             ("🔗 Links",       ["horse_link", "pdf_download_link"]),
             ("ℹ️ Meta",        ["scraped_at"]),
