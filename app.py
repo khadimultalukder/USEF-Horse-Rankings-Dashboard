@@ -13,7 +13,7 @@ Features:
 - Summary KPIs
 
 Run:
-    streamlit run app.py
+    streamlit run dashboard_app.py
 """
 
 from __future__ import annotations
@@ -53,7 +53,7 @@ CUSTOM_CSS = """
     /* ---------- Animated KPI cards ---------- */
     .kpi-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         gap: 1rem;
         margin: 0.5rem 0 1.25rem 0;
     }
@@ -115,6 +115,15 @@ CUSTOM_CSS = """
     .kpi-card.kpi-pink   { --glow: rgba(236, 72, 153, 0.30); }
     .kpi-card.kpi-amber::before  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
     .kpi-card.kpi-amber  { --glow: rgba(245, 158, 11, 0.30); }
+    .kpi-card.kpi-green::before  { background: linear-gradient(90deg, #10b981, #34d399); }
+    .kpi-card.kpi-green  { --glow: rgba(16, 185, 129, 0.30); }
+    .kpi-card.kpi-clickable { cursor: pointer; user-select: none; }
+    .kpi-card.kpi-active {
+        border-color: #10b981 !important;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.45), 0 8px 20px rgba(16, 185, 129, 0.2) !important;
+        transform: translateY(-2px);
+    }
+    .kpi-card.kpi-active .kpi-label::after { content: ' ✓ ACTIVE'; color: #10b981; }
 
     .kpi-icon {
         font-size: 1.35rem;
@@ -161,6 +170,7 @@ CUSTOM_CSS = """
     .kpi-card:nth-child(2) { animation-delay: 0.08s; }
     .kpi-card:nth-child(3) { animation-delay: 0.16s; }
     .kpi-card:nth-child(4) { animation-delay: 0.24s; }
+    .kpi-card:nth-child(5) { animation-delay: 0.32s; }
 
     /* ---------- Detail card (selected row) ---------- */
     .detail-card {
@@ -436,8 +446,11 @@ def load_rankings() -> pd.DataFrame:
 st.title("🐎 USEF Horse Rankings Dashboard")
 st.caption(f"Source: Supabase table `{TABLE_NAME}`")
 
-with st.spinner("Loading data…"):
+with st.status("🔄 Loading rankings data…", expanded=True) as _load_status:
+    st.write("📡 Connecting to Supabase…")
     df = load_rankings()
+    st.write(f"✅ Loaded {len(df):,} rows")
+    _load_status.update(label="✅ Data loaded!", state="complete", expanded=False)
 
 if df.empty:
     st.warning("No rows returned from Supabase.")
@@ -556,6 +569,11 @@ with st.expander("🔎 Search & Filters", expanded=True):
 # ---------------------------------------------------------------------------
 # Apply filters
 # ---------------------------------------------------------------------------
+if "filter_today" not in st.session_state:
+    st.session_state["filter_today"] = False
+filter_today_active = st.session_state["filter_today"]
+_today = datetime.date.today()
+
 filtered = df.copy()
 
 if selected_horse:
@@ -587,6 +605,10 @@ if filter_start_date or filter_end_date:
     if filter_end_date and _has_start_date:
         mask &= filtered["start_date"].notna() & (filtered["start_date"] <= filter_end_date)
     filtered = filtered[mask]
+
+# "Imported Today" card filter
+if filter_today_active and "scraped_at" in filtered.columns:
+    filtered = filtered[filtered["scraped_at"] == _today]
 
 # Recalculate nat_points_good from the shows column every time.
 # Always compute all-shows sum first (used as highlight reference).
@@ -626,6 +648,13 @@ if "nat_points_good" in filtered.columns and len(filtered) and filtered["nat_poi
 else:
     _kpi_avg = "—"
 
+# Today's imports — rows scraped today (uses the full df, not filtered)
+_today = datetime.date.today()
+if "scraped_at" in df.columns:
+    _kpi_today = f"{(df['scraped_at'] == _today).sum():,}"
+else:
+    _kpi_today = "—"
+
 st.markdown(
     f"""
     <div class="kpi-grid">
@@ -653,10 +682,22 @@ st.markdown(
             <div class="kpi-value">{_kpi_avg}</div>
             <div class="kpi-sub">across filtered rows</div>
         </div>
+        <div class="kpi-card kpi-green {"kpi-active" if filter_today_active else ""}">
+            <div class="kpi-icon">📥</div>
+            <div class="kpi-label">Imported Today</div>
+            <div class="kpi-value">{_kpi_today}</div>
+            <div class="kpi-sub">scraped {_today.strftime("%b %d, %Y")}</div>
+        </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
+
+# Native Streamlit button to toggle the today filter — sits flush below the KPI row
+_today_btn_label = "✅ Showing today's imports only — click to clear" if filter_today_active else "📥 Show only today's imports"
+if st.button(_today_btn_label, key="today_filter_btn", type="primary" if filter_today_active else "secondary"):
+    st.session_state["filter_today"] = not filter_today_active
+    st.rerun()
 
 st.divider()
 
@@ -688,9 +729,7 @@ display_cols = [c for c in preferred_cols if c in filtered.columns] + \
 
 display_cols = [c for c in display_cols if c != '_nat_all_shows']
 display_df = filtered[display_cols].copy()
-# Keep _nat_all_shows in filtered for highlight comparison
-if '_nat_all_shows' in filtered.columns:
-    display_df['_nat_all_shows'] = filtered['_nat_all_shows']
+# _nat_all_shows stays in filtered only (not added to display_df)
 
 # Render with link columns when possible
 column_config = {}
@@ -721,9 +760,9 @@ def _highlight_changed(df):
     if (
         top15_enabled
         and "nat_points_good" in df.columns
-        and "_nat_all_shows" in df.columns
+        and "_nat_all_shows" in filtered.columns
     ):
-        changed = df["nat_points_good"].round(4) != df["_nat_all_shows"].round(4)
+        changed = df["nat_points_good"].round(4) != filtered["_nat_all_shows"].round(4)
         styles.loc[changed, "nat_points_good"] = "background-color: rgba(99, 102, 241, 0.25); color: #6366f1; font-weight: 700;"
     return styles
 
@@ -860,9 +899,31 @@ else:
     st.caption("👆 Click any row to highlight it and see its details.")
 
 # ---------------------------------------------------------------------------
-# UI: CSV download
+# UI: CSV download  (display columns only, with friendly header names)
 # ---------------------------------------------------------------------------
-csv_bytes = filtered.to_csv(index=False).encode("utf-8")
+CSV_HEADERS = {
+    "competition_year":     "Year",
+    "horse_name":           "Horse Name",
+    "horse_id":             "Horse ID",
+    "section":              "Section",
+    "award_category":       "Award Category",
+    "nat_points_good":      "National Points",
+    "nat_points_original":  "National Points (DB)",
+    "show_count":           "Show Count",
+    "shows":                "Shows",
+    "start_date":           "Start Date",
+    "end_date":             "End Date",
+    "horse_link":           "USEF Page URL",
+    "pdf_download_link":    "PDF Report URL",
+    "scraped_at":           "Scraped At",
+}
+
+# Use display_cols, strip internal helpers
+_csv_cols = [c for c in display_cols if c != "_nat_all_shows"]
+_csv_df = filtered[_csv_cols].copy()
+_csv_df.rename(columns={c: CSV_HEADERS.get(c, c) for c in _csv_cols}, inplace=True)
+
+csv_bytes = _csv_df.to_csv(index=False).encode("utf-8")
 st.download_button(
     label="⬇️  Download filtered results as CSV",
     data=csv_bytes,
