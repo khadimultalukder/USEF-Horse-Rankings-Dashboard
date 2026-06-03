@@ -522,28 +522,32 @@ with st.expander("🔎 Search & Filters", expanded=True):
             help="Leave empty to include all award categories",
         )
 
-    # Row 3: Start Date / End Date single pickers
+    # Row 3: Start Date / End Date dropdowns (only dates that exist in the data)
     st.markdown("**📅 Date Filters**")
     date_col1, date_col2 = st.columns(2)
+
+    start_dates_available = sorted(df["start_date"].dropna().unique().tolist())         if _has_start_date else []
+    end_dates_available = sorted(df["end_date"].dropna().unique().tolist())         if _has_end_date else []
+
     with date_col1:
-        filter_start_date = st.date_input(
+        filter_start_date = st.selectbox(
             "Start Date",
-            value=None,
-            min_value=datetime.date(2000, 1, 1),
-            max_value=datetime.date(2100, 12, 31),
-            format="MM/DD/YYYY",
+            options=start_dates_available,
+            index=None,
+            placeholder="Select or type a start date…",
             help="Show only records with this exact start date. Leave blank for no filter.",
             key="filter_start_date",
+            format_func=lambda d: d.strftime("%m/%d/%Y"),
         )
     with date_col2:
-        filter_end_date = st.date_input(
+        filter_end_date = st.selectbox(
             "End Date",
-            value=None,
-            min_value=datetime.date(2000, 1, 1),
-            max_value=datetime.date(2100, 12, 31),
-            format="MM/DD/YYYY",
+            options=end_dates_available,
+            index=None,
+            placeholder="Select or type an end date…",
             help="Show only records with this exact end date. Leave blank for no filter.",
             key="filter_end_date",
+            format_func=lambda d: d.strftime("%m/%d/%Y"),
         )
 
     # Row 4: top-15 toggle + refresh button
