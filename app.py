@@ -532,7 +532,7 @@ with st.expander("🔎 Search & Filters", expanded=True):
             min_value=datetime.date(2000, 1, 1),
             max_value=datetime.date(2100, 12, 31),
             format="MM/DD/YYYY",
-            help="Show records whose competition period includes or starts from this date. Leave blank for no filter.",
+            help="Show only records with this exact start date. Leave blank for no filter.",
             key="filter_start_date",
         )
     with date_col2:
@@ -542,7 +542,7 @@ with st.expander("🔎 Search & Filters", expanded=True):
             min_value=datetime.date(2000, 1, 1),
             max_value=datetime.date(2100, 12, 31),
             format="MM/DD/YYYY",
-            help="Show records whose competition period includes or ends by this date. Leave blank for no filter.",
+            help="Show only records with this exact end date. Leave blank for no filter.",
             key="filter_end_date",
         )
 
@@ -596,15 +596,13 @@ if selected_sections:
 if selected_awards:
     filtered = filtered[filtered["award_category"].isin(selected_awards)]
 
-# Date range filter — filter directly on start_date and end_date.
-# Start Date: show records where start_date >= filter_start_date
-# End Date: show records where end_date <= filter_end_date
+# Date exact match filter — show only records with the exact date entered.
 if filter_start_date or filter_end_date:
     mask = pd.Series([True] * len(filtered), index=filtered.index)
     if filter_start_date and _has_start_date:
-        mask &= filtered["start_date"].notna() & (filtered["start_date"] >= filter_start_date)
+        mask &= filtered["start_date"].notna() & (filtered["start_date"] == filter_start_date)
     if filter_end_date and _has_end_date:
-        mask &= filtered["end_date"].notna() & (filtered["end_date"] <= filter_end_date)
+        mask &= filtered["end_date"].notna() & (filtered["end_date"] == filter_end_date)
     filtered = filtered[mask]
 
 # "Imported Today" card filter
@@ -708,6 +706,10 @@ st.divider()
 # ---------------------------------------------------------------------------
 _top15_label = " — Nat. points = top 15 highest shows" if top15_enabled else " — Nat. points = all shows"
 st.subheader(f"Results ({len(filtered):,}){_top15_label}")
+
+# Sort by show_count descending when Top 15 toggle is ON
+if top15_enabled and "show_count" in filtered.columns:
+    filtered = filtered.sort_values("show_count", ascending=False)
 
 preferred_cols = [
     "competition_year",
