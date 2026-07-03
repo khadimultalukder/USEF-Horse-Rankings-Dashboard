@@ -788,7 +788,7 @@ def _highlight_changed(df):
         and "_nat_all_shows" in filtered.columns
     ):
         changed = df["nat_points_good"].round(4) != filtered["_nat_all_shows"].round(4)
-        styles.loc[changed, "nat_points_good"] = "background-color: rgba(99, 102, 241, 0.25); color: #6366f1; font-weight: 700;"
+        styles.loc[changed, "nat_points_good"] = "background-color: #ff4b4b; color: #ffffff; font-weight: 700;"
     return styles
 
 styled_df = display_df.style.apply(_highlight_changed, axis=None)
