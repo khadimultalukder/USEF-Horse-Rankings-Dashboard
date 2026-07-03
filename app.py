@@ -50,6 +50,11 @@ CUSTOM_CSS = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap');
 
+    /* ---------- Deep black page background ---------- */
+    .stApp {
+        background: #000000;
+    }
+
     /* ---------- Animated KPI cards ---------- */
     .kpi-grid {
         display: grid;
