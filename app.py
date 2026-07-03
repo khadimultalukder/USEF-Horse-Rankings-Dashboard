@@ -33,7 +33,7 @@ TABLE_NAME = "usef_horse_rankings"
 PAGE_SIZE = 500  # Smaller pages reduce risk of HTTP/2 stream resets on big tables
 MAX_RETRIES = 4
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env"))
 
 st.set_page_config(
     page_title="USEF Horse Rankings",
@@ -550,8 +550,8 @@ with st.expander("🔎 Search & Filters", expanded=True):
             format_func=lambda d: d.strftime("%m/%d/%Y"),
         )
 
-    # Row 4: top-15 toggle + refresh button
-    r4c1, r4c2 = st.columns([1, 1])
+    # Row 4: top-15 toggle + remark-missing toggle + refresh button
+    r4c1, r4c2, r4c3 = st.columns([1, 1, 1])
 
     with r4c1:
         st.write("")  # vertical spacer
@@ -563,6 +563,15 @@ with st.expander("🔎 Search & Filters", expanded=True):
         )
 
     with r4c2:
+        st.write("")  # vertical spacer
+        st.write("")
+        remark_null_enabled = st.toggle(
+            "📝 Missing remark only",
+            value=False,
+            help="Show only rows where the `remark` column is empty/null.",
+        )
+
+    with r4c3:
         st.write("")  # spacer
         st.write("")
         if st.button("🔄 Refresh data", use_container_width=True):
@@ -608,6 +617,10 @@ if filter_start_date or filter_end_date:
     if filter_end_date and _has_end_date:
         mask &= filtered["end_date"].notna() & (filtered["end_date"] == filter_end_date)
     filtered = filtered[mask]
+
+# "Remark missing" toggle filter
+if remark_null_enabled and "remark" in filtered.columns:
+    filtered = filtered[filtered["remark"].isna()]
 
 # "Imported Today" card filter
 if filter_today_active and "scraped_at" in filtered.columns:
