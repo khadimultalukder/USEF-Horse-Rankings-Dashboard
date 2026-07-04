@@ -4,6 +4,7 @@ USEF Horse Rankings Dashboard
 A Streamlit dashboard for the `usef_horse_rankings` table in Supabase.
 
 Features:
+- Scraping status banner (reads the `scrape_status` table)
 - Search by horse name or horse ID
 - Filters: competition year (season), section, award category
 - Date range filter (start_date / end_date)
@@ -30,6 +31,7 @@ from supabase import Client, create_client
 # Config
 # ---------------------------------------------------------------------------
 TABLE_NAME = "usef_horse_rankings"
+STATUS_TABLE = "scrape_status"
 PAGE_SIZE = 500  # Smaller pages reduce risk of HTTP/2 stream resets on big tables
 MAX_RETRIES = 4
 
@@ -446,10 +448,54 @@ def load_rankings() -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
+# Scrape status (single-row table updated manually after each full run)
+# ---------------------------------------------------------------------------
+@st.cache_data(ttl=1800, show_spinner=False)
+def get_scrape_status() -> Optional[dict]:
+    """Fetch the single-row scrape_status table. Returns None if unavailable."""
+    sb = get_client()
+    try:
+        resp = sb.table(STATUS_TABLE).select("*").eq("id", 1).execute()
+        return resp.data[0] if resp.data else None
+    except Exception:
+        # Table missing / RLS blocking — never crash the dashboard for this.
+        return None
+
+
+# ---------------------------------------------------------------------------
 # UI: Header
 # ---------------------------------------------------------------------------
 st.title("🐎 USEF Horse Rankings Dashboard")
 st.caption(f"Source: Supabase table `{TABLE_NAME}`")
+
+# ---------------------------------------------------------------------------
+# UI: Scraping status banner
+# ---------------------------------------------------------------------------
+import datetime as _dt
+
+_scrape_status = get_scrape_status()
+if _scrape_status and _scrape_status.get("last_completed_at"):
+    _raw = str(_scrape_status["last_completed_at"])
+    # Supabase returns e.g. "2026-07-02T22:08:00+00:00" (sometimes "Z" suffix)
+    try:
+        _completed = _dt.datetime.fromisoformat(_raw.replace("Z", "+00:00"))
+        _formatted = _completed.strftime("%B %d, %Y")
+        _days_ago = (_dt.datetime.now(_dt.timezone.utc) - _completed).days
+
+        if _scrape_status.get("status") == "in_progress":
+            st.warning(
+                f"🔄 Scraping status: **In Progress** — "
+                f"showing data from last complete update: **{_formatted}**"
+            )
+        else:
+            st.success(
+                f"✅ Scraping status: **Completed** — "
+                f"Last updated: **{_formatted}** ({_days_ago} days ago)"
+            )
+    except ValueError:
+        st.caption("ℹ️ Scrape status unavailable")
+else:
+    st.caption("ℹ️ Scrape status unavailable")
 
 with st.status("🔄 Loading rankings data…", expanded=True) as _load_status:
     st.write("📡 Connecting to Supabase…")
@@ -531,8 +577,10 @@ with st.expander("🔎 Search & Filters", expanded=True):
     st.markdown("**📅 Date Filters**")
     date_col1, date_col2 = st.columns(2)
 
-    start_dates_available = sorted(df["start_date"].dropna().unique().tolist())         if _has_start_date else []
-    end_dates_available = sorted(df["end_date"].dropna().unique().tolist())         if _has_end_date else []
+    start_dates_available = sorted(df["start_date"].dropna().unique().tolist()) \
+        if _has_start_date else []
+    end_dates_available = sorted(df["end_date"].dropna().unique().tolist()) \
+        if _has_end_date else []
 
     with date_col1:
         filter_start_date = st.selectbox(
@@ -581,6 +629,7 @@ with st.expander("🔎 Search & Filters", expanded=True):
         st.write("")
         if st.button("🔄 Refresh data", use_container_width=True):
             load_rankings.clear()
+            get_scrape_status.clear()
             st.rerun()
 
 
@@ -747,6 +796,7 @@ preferred_cols = [
     "shows",
     "horse_link",
     "pdf_download_link",
+    "remark",
     "scraped_at",
 ]
 display_cols = [c for c in preferred_cols if c in filtered.columns] + \
@@ -778,6 +828,10 @@ if "nat_points_original" in display_df.columns:
     column_config["nat_points_original"] = st.column_config.NumberColumn(
         "Nat. points (DB)", format="%.2f"
     )
+if "remark" in display_df.columns:
+    column_config["remark"] = st.column_config.TextColumn(
+        "Remark", help="Rows flagged as stale were not found in the latest scrape."
+    )
 
 # Highlight nat_points_good cell when toggle is ON and value changed vs DB original
 def _highlight_changed(df):
@@ -789,6 +843,11 @@ def _highlight_changed(df):
     ):
         changed = df["nat_points_good"].round(4) != filtered["_nat_all_shows"].round(4)
         styles.loc[changed, "nat_points_good"] = "background-color: #ff4b4b; color: #ffffff; font-weight: 700;"
+    # Dim + amber-tint stale rows (remark present)
+    if "remark" in df.columns:
+        stale_mask = df["remark"].notna() & (df["remark"].astype(str).str.strip() != "")
+        for col in df.columns:
+            styles.loc[stale_mask, col] = styles.loc[stale_mask, col] + "; background-color: rgba(245, 158, 11, 0.12); color: #b45309;"
     return styles
 
 styled_df = display_df.style.apply(_highlight_changed, axis=None)
@@ -840,6 +899,7 @@ if selected_rows:
             "end_date": "End date",
             "horse_link": "USEF page",
             "pdf_download_link": "PDF report",
+            "remark": "Remark",
             "scraped_at": "Scraped at",
         }
         GROUPS = [
@@ -847,7 +907,7 @@ if selected_rows:
             ("⚡ Performance", ["nat_points_good", "nat_points_original", "show_count", "shows"]),
             ("📅 Period",      ["competition_year", "start_date", "end_date"]),
             ("🔗 Links",       ["horse_link", "pdf_download_link"]),
-            ("ℹ️ Meta",        ["scraped_at"]),
+            ("ℹ️ Meta",        ["remark", "scraped_at"]),
         ]
 
         def _fmt_value(key, value):
@@ -940,6 +1000,7 @@ CSV_HEADERS = {
     "end_date":             "End Date",
     "horse_link":           "USEF Page URL",
     "pdf_download_link":    "PDF Report URL",
+    "remark":               "Remark",
     "scraped_at":           "Scraped At",
 }
 
