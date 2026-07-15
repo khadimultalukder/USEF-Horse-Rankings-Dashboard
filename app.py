@@ -200,14 +200,13 @@ CUSTOM_CSS = """
     .kpi-card:nth-child(4) { animation-delay: 0.24s; }
     .kpi-card:nth-child(5) { animation-delay: 0.32s; }
 
-    /* ---------- Detail card (selected row) ---------- */
+    /* ---------- Detail card (selected row) — simplified ---------- */
     .detail-card {
         padding: 1rem 1.25rem;
         margin: 0.75rem 0 0.25rem 0;
-        border-radius: 14px;
-        border: 1px solid rgba(168, 85, 247, 0.35);
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.10) 0%, rgba(236, 72, 153, 0.10) 100%);
-        animation: kpi-fade-in 0.4s ease-out both;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
     }
     .detail-card .detail-title {
         font-family: 'Space Grotesk', 'Inter', sans-serif;
@@ -225,25 +224,18 @@ CUSTOM_CSS = """
         font-family: 'Space Grotesk', 'Inter', sans-serif;
         font-size: 0.7rem;
         font-weight: 700;
-        letter-spacing: 0.14em;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: #a855f7;
+        color: #475569;
         margin: 1.1rem 0 0.55rem 0;
         display: flex;
         align-items: center;
         gap: 0.5rem;
     }
-    .detail-section::before {
-        content: '';
-        width: 4px;
-        height: 14px;
-        background: linear-gradient(180deg, #6366f1, #ec4899);
-        border-radius: 2px;
-    }
     .detail-section .section-line {
         flex: 1;
         height: 1px;
-        background: linear-gradient(90deg, rgba(168,85,247,0.25), transparent);
+        background: #e2e8f0;
     }
     .detail-grid {
         display: grid;
@@ -252,16 +244,9 @@ CUSTOM_CSS = """
     }
     .detail-field {
         padding: 0.7rem 0.85rem;
-        border-radius: 12px;
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(236, 72, 153, 0.04) 100%),
-                    rgba(255, 255, 255, 0.85);
-        border: 1px solid rgba(148, 163, 184, 0.14);
-        transition: border-color 0.2s ease, transform 0.2s ease;
-        animation: kpi-fade-in 0.35s ease-out both;
-    }
-    .detail-field:hover {
-        border-color: rgba(168, 85, 247, 0.45);
-        transform: translateY(-1px);
+        border-radius: 8px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
     }
     .detail-field.detail-field--wide { grid-column: 1 / -1; }
     .detail-label {
@@ -282,10 +267,7 @@ CUSTOM_CSS = """
         font-family: 'Space Grotesk', 'Inter', sans-serif;
         font-size: 1.35rem;
         font-weight: 700;
-        background: linear-gradient(135deg, #6366f1, #ec4899);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: #4f46e5;
     }
     .detail-value.detail-value--muted { color: #94a3b8; font-style: italic; }
     .detail-chips {
@@ -298,10 +280,10 @@ CUSTOM_CSS = """
         display: inline-flex;
         align-items: center;
         padding: 0.2rem 0.6rem;
-        border-radius: 999px;
-        background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.18));
-        border: 1px solid rgba(168,85,247,0.35);
-        color: #6b21a8;
+        border-radius: 6px;
+        background: #eef2ff;
+        border: 1px solid #e0e7ff;
+        color: #4338ca;
         font-size: 0.78rem;
         font-weight: 600;
         font-family: 'Space Grotesk', monospace;
@@ -311,18 +293,15 @@ CUSTOM_CSS = """
         align-items: center;
         gap: 0.35rem;
         padding: 0.4rem 0.85rem;
-        border-radius: 10px;
-        background: linear-gradient(135deg, #6366f1, #a855f7);
+        border-radius: 8px;
+        background: #4f46e5;
         color: white !important;
         font-weight: 600;
         font-size: 0.82rem;
         text-decoration: none !important;
-        transition: transform 0.15s ease, box-shadow 0.2s ease;
-        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
     }
     .detail-link-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 14px rgba(99, 102, 241, 0.45);
+        background: #4338ca;
     }
 
     /* ---------- DataFrame row styling ---------- */
