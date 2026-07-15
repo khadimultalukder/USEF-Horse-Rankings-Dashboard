@@ -87,6 +87,15 @@ CUSTOM_CSS = """
         color: #ffffff !important;
         font-weight: 700 !important;
     }
+    /* Multiselect selected-value tags/pills (red background) */
+    [data-baseweb="tag"],
+    [data-baseweb="tag"] span,
+    [data-baseweb="tag"] div {
+        color: #ffffff !important;
+    }
+    [data-baseweb="tag"] svg {
+        fill: #ffffff !important;
+    }
 
     /* ---------- Animated KPI cards ---------- */
     .kpi-grid {
@@ -230,8 +239,12 @@ CUSTOM_CSS = """
         margin: 1rem 0 0.4rem 0;
     }
     .detail-list {
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0 2rem;
+    }
+    @media (max-width: 700px) {
+        .detail-list { grid-template-columns: 1fr; }
     }
     .detail-row {
         display: flex;
@@ -239,9 +252,11 @@ CUSTOM_CSS = """
         gap: 0.5rem;
         padding: 0.35rem 0;
         border-bottom: 1px solid #f1f5f9;
+        min-width: 0;
     }
+    .detail-row.detail-row--wide { grid-column: 1 / -1; }
     .detail-row-label {
-        min-width: 160px;
+        min-width: 140px;
         font-size: 0.85rem;
         font-weight: 600;
         color: #64748b;
@@ -909,7 +924,10 @@ if selected_rows:
             # Default
             return f'<div class="detail-value">{_html.escape(str(value))}</div>'
 
-        # Render grouped sections as a simple "Label: value" list
+        # Fields that need the full row width (long text / chips / buttons)
+        WIDE_KEYS = {"shows", "section", "award_category", "horse_link", "pdf_download_link", "remark"}
+
+        # Render grouped sections as a simple "Label: value" list, two columns wide
         section_html_parts = []
         rendered_keys = set()
         for group_label, keys in GROUPS:
@@ -919,8 +937,9 @@ if selected_rows:
             rows_html = []
             for k in keys_present:
                 rendered_keys.add(k)
+                wide_cls = " detail-row--wide" if k in WIDE_KEYS else ""
                 rows_html.append(
-                    f'<div class="detail-row">'
+                    f'<div class="detail-row{wide_cls}">'
                     f'<span class="detail-row-label">{_html.escape(LABELS.get(k, k))}:</span>'
                     f'{_fmt_value(k, row.get(k))}'
                     f'</div>'
@@ -935,8 +954,9 @@ if selected_rows:
         if leftover:
             rows_html = []
             for k in leftover:
+                wide_cls = " detail-row--wide" if k in WIDE_KEYS else ""
                 rows_html.append(
-                    f'<div class="detail-row">'
+                    f'<div class="detail-row{wide_cls}">'
                     f'<span class="detail-row-label">{_html.escape(LABELS.get(k, str(k)))}:</span>'
                     f'{_fmt_value(k, row.get(k))}'
                     f'</div>'
