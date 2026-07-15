@@ -219,53 +219,43 @@ CUSTOM_CSS = """
         color: #64748b;
     }
 
-    /* ---------- Row details — grouped field grid ---------- */
+    /* ---------- Row details — simple label: value list ---------- */
     .detail-section {
         font-family: 'Space Grotesk', 'Inter', sans-serif;
-        font-size: 0.7rem;
+        font-size: 0.72rem;
         font-weight: 700;
-        letter-spacing: 0.1em;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
         color: #475569;
-        margin: 1.1rem 0 0.55rem 0;
+        margin: 1rem 0 0.4rem 0;
+    }
+    .detail-list {
         display: flex;
-        align-items: center;
+        flex-direction: column;
+    }
+    .detail-row {
+        display: flex;
+        align-items: baseline;
         gap: 0.5rem;
+        padding: 0.35rem 0;
+        border-bottom: 1px solid #f1f5f9;
     }
-    .detail-section .section-line {
-        flex: 1;
-        height: 1px;
-        background: #e2e8f0;
-    }
-    .detail-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 0.6rem;
-    }
-    .detail-field {
-        padding: 0.7rem 0.85rem;
-        border-radius: 8px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-    }
-    .detail-field.detail-field--wide { grid-column: 1 / -1; }
-    .detail-label {
-        font-size: 0.66rem;
+    .detail-row-label {
+        min-width: 160px;
+        font-size: 0.85rem;
         font-weight: 600;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: #94a3b8;
-        margin-bottom: 0.3rem;
+        color: #64748b;
+        flex-shrink: 0;
     }
     .detail-value {
-        font-size: 0.95rem;
+        font-size: 0.92rem;
         font-weight: 500;
         color: #0f172a;
         word-break: break-word;
     }
     .detail-value.detail-value--big {
         font-family: 'Space Grotesk', 'Inter', sans-serif;
-        font-size: 1.35rem;
+        font-size: 1.15rem;
         font-weight: 700;
         color: #4f46e5;
     }
@@ -274,7 +264,6 @@ CUSTOM_CSS = """
         display: flex;
         flex-wrap: wrap;
         gap: 0.35rem;
-        margin-top: 0.2rem;
     }
     .detail-chip {
         display: inline-flex;
@@ -920,42 +909,41 @@ if selected_rows:
             # Default
             return f'<div class="detail-value">{_html.escape(str(value))}</div>'
 
-        # Render grouped sections
+        # Render grouped sections as a simple "Label: value" list
         section_html_parts = []
         rendered_keys = set()
         for group_label, keys in GROUPS:
             keys_present = [k for k in keys if k in row.index]
             if not keys_present:
                 continue
-            cards = []
+            rows_html = []
             for k in keys_present:
                 rendered_keys.add(k)
-                wide_cls = " detail-field--wide" if k in ("shows", "section", "award_category") else ""
-                cards.append(
-                    f'<div class="detail-field{wide_cls}">'
-                    f'<div class="detail-label">{_html.escape(LABELS.get(k, k))}</div>'
+                rows_html.append(
+                    f'<div class="detail-row">'
+                    f'<span class="detail-row-label">{_html.escape(LABELS.get(k, k))}:</span>'
                     f'{_fmt_value(k, row.get(k))}'
                     f'</div>'
                 )
             section_html_parts.append(
-                f'<div class="detail-section">{group_label}<span class="section-line"></span></div>'
-                f'<div class="detail-grid">{"".join(cards)}</div>'
+                f'<div class="detail-section">{group_label}</div>'
+                f'<div class="detail-list">{"".join(rows_html)}</div>'
             )
 
         # Catch-all section for any unexpected columns
         leftover = [k for k in row.index if k not in rendered_keys]
         if leftover:
-            cards = []
+            rows_html = []
             for k in leftover:
-                cards.append(
-                    f'<div class="detail-field">'
-                    f'<div class="detail-label">{_html.escape(LABELS.get(k, str(k)))}</div>'
+                rows_html.append(
+                    f'<div class="detail-row">'
+                    f'<span class="detail-row-label">{_html.escape(LABELS.get(k, str(k)))}:</span>'
                     f'{_fmt_value(k, row.get(k))}'
                     f'</div>'
                 )
             section_html_parts.append(
-                f'<div class="detail-section">📦 Other<span class="section-line"></span></div>'
-                f'<div class="detail-grid">{"".join(cards)}</div>'
+                f'<div class="detail-section">📦 Other</div>'
+                f'<div class="detail-list">{"".join(rows_html)}</div>'
             )
 
         st.markdown("".join(section_html_parts), unsafe_allow_html=True)
