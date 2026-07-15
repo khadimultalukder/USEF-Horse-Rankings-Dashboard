@@ -52,9 +52,40 @@ CUSTOM_CSS = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap');
 
-    /* ---------- Deep black page background ---------- */
+    /* ---------- Light page background ---------- */
     .stApp {
-        background: #000000;
+        background: #f8fafc;
+    }
+
+    /* ---------- Dropdown / select menu readability ---------- */
+    [data-baseweb="select"] > div {
+        background-color: #ffffff !important;
+        border-color: rgba(148, 163, 184, 0.45) !important;
+    }
+    [data-baseweb="select"] div,
+    [data-baseweb="select"] span,
+    [data-baseweb="select"] input {
+        color: #0f172a !important;
+    }
+    div[data-baseweb="popover"] ul[data-baseweb="menu"],
+    div[data-baseweb="popover"] div[data-baseweb="menu"] {
+        background-color: #ffffff !important;
+        border: 1px solid rgba(148, 163, 184, 0.35) !important;
+    }
+    li[data-baseweb="menu-item"],
+    li[role="option"] {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+    }
+    li[data-baseweb="menu-item"]:hover,
+    li[role="option"]:hover {
+        background-color: rgba(99, 102, 241, 0.14) !important;
+        color: #1e1b4b !important;
+    }
+    li[aria-selected="true"] {
+        background-color: #6366f1 !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
     }
 
     /* ---------- Animated KPI cards ---------- */
@@ -80,13 +111,6 @@ CUSTOM_CSS = """
                     border-color 0.28s ease;
         overflow: hidden;
         animation: kpi-fade-in 0.55s ease-out both;
-    }
-    @media (prefers-color-scheme: dark) {
-        .kpi-card {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.10) 0%, rgba(236, 72, 153, 0.08) 100%),
-                        rgba(30, 41, 59, 0.55);
-            border-color: rgba(148, 163, 184, 0.18);
-        }
     }
     .kpi-card::before {
         content: '';
@@ -153,9 +177,6 @@ CUSTOM_CSS = """
         font-weight: 700;
         line-height: 1.1;
         color: #0f172a;
-    }
-    @media (prefers-color-scheme: dark) {
-        .kpi-value { color: #f8fafc; }
     }
     .kpi-sub {
         font-size: 0.72rem;
@@ -233,16 +254,10 @@ CUSTOM_CSS = """
         padding: 0.7rem 0.85rem;
         border-radius: 12px;
         background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(236, 72, 153, 0.04) 100%),
-                    rgba(30, 41, 59, 0.35);
+                    rgba(255, 255, 255, 0.85);
         border: 1px solid rgba(148, 163, 184, 0.14);
         transition: border-color 0.2s ease, transform 0.2s ease;
         animation: kpi-fade-in 0.35s ease-out both;
-    }
-    @media (prefers-color-scheme: light) {
-        .detail-field {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(236, 72, 153, 0.04) 100%),
-                        rgba(255, 255, 255, 0.85);
-        }
     }
     .detail-field:hover {
         border-color: rgba(168, 85, 247, 0.45);
@@ -260,11 +275,8 @@ CUSTOM_CSS = """
     .detail-value {
         font-size: 0.95rem;
         font-weight: 500;
-        color: #e2e8f0;
+        color: #0f172a;
         word-break: break-word;
-    }
-    @media (prefers-color-scheme: light) {
-        .detail-value { color: #0f172a; }
     }
     .detail-value.detail-value--big {
         font-family: 'Space Grotesk', 'Inter', sans-serif;
@@ -289,13 +301,10 @@ CUSTOM_CSS = """
         border-radius: 999px;
         background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.18));
         border: 1px solid rgba(168,85,247,0.35);
-        color: #e9d5ff;
+        color: #6b21a8;
         font-size: 0.78rem;
         font-weight: 600;
         font-family: 'Space Grotesk', monospace;
-    }
-    @media (prefers-color-scheme: light) {
-        .detail-chip { color: #6b21a8; }
     }
     .detail-link-btn {
         display: inline-flex;
@@ -339,15 +348,6 @@ CUSTOM_CSS = """
         font-weight: 600 !important;
         color: #1e293b !important;
         border-bottom: 1px solid rgba(99, 102, 241, 0.25) !important;
-    }
-    @media (prefers-color-scheme: dark) {
-        [data-testid="stDataFrame"] [role="columnheader"] {
-            color: #e2e8f0 !important;
-            background: linear-gradient(180deg, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0.08)) !important;
-        }
-        [data-testid="stDataFrame"] [role="row"]:nth-child(even) > [role="gridcell"] {
-            background: rgba(99, 102, 241, 0.07) !important;
-        }
     }
 </style>
 """
