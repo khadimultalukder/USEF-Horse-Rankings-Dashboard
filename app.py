@@ -239,12 +239,8 @@ CUSTOM_CSS = """
         margin: 1rem 0 0.4rem 0;
     }
     .detail-list {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0 2rem;
-    }
-    @media (max-width: 700px) {
-        .detail-list { grid-template-columns: 1fr; }
+        display: flex;
+        flex-direction: column;
     }
     .detail-row {
         display: flex;
@@ -254,7 +250,6 @@ CUSTOM_CSS = """
         border-bottom: 1px solid #f1f5f9;
         min-width: 0;
     }
-    .detail-row.detail-row--wide { grid-column: 1 / -1; }
     .detail-row-label {
         min-width: 140px;
         font-size: 0.85rem;
@@ -759,7 +754,6 @@ st.divider()
 # UI: Results table
 # ---------------------------------------------------------------------------
 _top15_label = " — Nat. points = top 15 highest shows" if top15_enabled else " — Nat. points = all shows"
-st.subheader(f"Results ({len(filtered):,}){_top15_label}")
 
 # Sort by show_count descending when Top 15 toggle is ON
 if top15_enabled and "show_count" in filtered.columns:
@@ -788,6 +782,44 @@ display_cols = [c for c in preferred_cols if c in filtered.columns] + \
 display_cols = [c for c in display_cols if c != '_nat_all_shows']
 display_df = filtered[display_cols].copy()
 # _nat_all_shows stays in filtered only (not added to display_df)
+
+# ---------------------------------------------------------------------------
+# Prepare CSV export (display columns, friendly header names)
+# ---------------------------------------------------------------------------
+CSV_HEADERS = {
+    "competition_year":     "Year",
+    "horse_name":           "Horse Name",
+    "horse_id":             "Horse ID",
+    "section":              "Section",
+    "award_category":       "Award Category",
+    "nat_points_good":      "National Points",
+    "nat_points_original":  "National Points (DB)",
+    "show_count":           "Show Count",
+    "shows":                "Shows",
+    "start_date":           "Start Date",
+    "end_date":             "End Date",
+    "horse_link":           "USEF Page URL",
+    "pdf_download_link":    "PDF Report URL",
+    "remark":               "Remark",
+    "scraped_at":           "Scraped At",
+}
+_csv_cols = [c for c in display_cols if c != "_nat_all_shows"]
+_csv_df = filtered[_csv_cols].copy()
+_csv_df.rename(columns={c: CSV_HEADERS.get(c, c) for c in _csv_cols}, inplace=True)
+csv_bytes = _csv_df.to_csv(index=False).encode("utf-8")
+
+# Header row: results title on the left, CSV download button on the right
+_header_col, _btn_col = st.columns([4, 1])
+with _header_col:
+    st.subheader(f"Results ({len(filtered):,}){_top15_label}")
+with _btn_col:
+    st.download_button(
+        label="⬇️ Download CSV",
+        data=csv_bytes,
+        file_name="usef_horse_rankings_filtered.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
 
 # Render with link columns when possible
 column_config = {}
@@ -969,41 +1001,6 @@ if selected_rows:
         st.markdown("".join(section_html_parts), unsafe_allow_html=True)
 else:
     st.caption("👆 Click any row to highlight it and see its details.")
-
-# ---------------------------------------------------------------------------
-# UI: CSV download  (display columns only, with friendly header names)
-# ---------------------------------------------------------------------------
-CSV_HEADERS = {
-    "competition_year":     "Year",
-    "horse_name":           "Horse Name",
-    "horse_id":             "Horse ID",
-    "section":              "Section",
-    "award_category":       "Award Category",
-    "nat_points_good":      "National Points",
-    "nat_points_original":  "National Points (DB)",
-    "show_count":           "Show Count",
-    "shows":                "Shows",
-    "start_date":           "Start Date",
-    "end_date":             "End Date",
-    "horse_link":           "USEF Page URL",
-    "pdf_download_link":    "PDF Report URL",
-    "remark":               "Remark",
-    "scraped_at":           "Scraped At",
-}
-
-# Use display_cols, strip internal helpers
-_csv_cols = [c for c in display_cols if c != "_nat_all_shows"]
-_csv_df = filtered[_csv_cols].copy()
-_csv_df.rename(columns={c: CSV_HEADERS.get(c, c) for c in _csv_cols}, inplace=True)
-
-csv_bytes = _csv_df.to_csv(index=False).encode("utf-8")
-st.download_button(
-    label="⬇️  Download filtered results as CSV",
-    data=csv_bytes,
-    file_name="usef_horse_rankings_filtered.csv",
-    mime="text/csv",
-    use_container_width=False,
-)
 
 st.caption(
     "Tip: click any column header in the table above to sort. "
