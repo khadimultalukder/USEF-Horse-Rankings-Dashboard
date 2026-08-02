@@ -783,8 +783,13 @@ display_cols = [c for c in display_cols if c != '_nat_all_shows']
 display_df = filtered[display_cols].copy()
 # _nat_all_shows stays in filtered only (not added to display_df)
 
-# Add a Rank column at the far left, reflecting the current sort/filter order
-display_df.insert(0, "rank", range(1, len(display_df) + 1))
+# Add a Rank column at the far left, based on national points
+# (nat_points_good already reflects the top-15-shows sum when that toggle is ON).
+if "nat_points_good" in display_df.columns:
+    _rank_series = display_df["nat_points_good"].rank(method="min", ascending=False)
+    display_df.insert(0, "rank", _rank_series.astype("Int64"))
+else:
+    display_df.insert(0, "rank", range(1, len(display_df) + 1))
 
 # ---------------------------------------------------------------------------
 # Prepare CSV export (display columns, friendly header names)
