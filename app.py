@@ -783,10 +783,14 @@ display_cols = [c for c in display_cols if c != '_nat_all_shows']
 display_df = filtered[display_cols].copy()
 # _nat_all_shows stays in filtered only (not added to display_df)
 
+# Add a Rank column at the far left, reflecting the current sort/filter order
+display_df.insert(0, "rank", range(1, len(display_df) + 1))
+
 # ---------------------------------------------------------------------------
 # Prepare CSV export (display columns, friendly header names)
 # ---------------------------------------------------------------------------
 CSV_HEADERS = {
+    "rank":                  "Rank",
     "competition_year":     "Year",
     "horse_name":           "Horse Name",
     "horse_id":             "Horse ID",
@@ -803,9 +807,8 @@ CSV_HEADERS = {
     "remark":               "Remark",
     "scraped_at":           "Scraped At",
 }
-_csv_cols = [c for c in display_cols if c != "_nat_all_shows"]
-_csv_df = filtered[_csv_cols].copy()
-_csv_df.rename(columns={c: CSV_HEADERS.get(c, c) for c in _csv_cols}, inplace=True)
+_csv_df = display_df.copy()
+_csv_df.rename(columns={c: CSV_HEADERS.get(c, c) for c in _csv_df.columns}, inplace=True)
 csv_bytes = _csv_df.to_csv(index=False).encode("utf-8")
 
 # Header row: results title on the left, CSV download button on the right
@@ -823,6 +826,10 @@ with _btn_col:
 
 # Render with link columns when possible
 column_config = {}
+if "rank" in display_df.columns:
+    column_config["rank"] = st.column_config.NumberColumn(
+        "Rank", format="%d", width="small"
+    )
 if "competition_year" in display_df.columns:
     column_config["competition_year"] = st.column_config.NumberColumn(
         "Year", format="%d", width="small"
