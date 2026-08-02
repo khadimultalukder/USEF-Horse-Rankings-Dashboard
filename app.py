@@ -589,7 +589,7 @@ with st.expander("🔎 Search & Filters", expanded=True):
         st.write("")
         top15_enabled = st.toggle(
             "🏅 Top 15 shows",
-            value=False,
+            value=True,
             help="OFF: national points = sum of ALL shows. ON: national points = sum of the top 15 highest-scoring shows.",
         )
 
