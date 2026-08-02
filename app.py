@@ -791,6 +791,10 @@ if "nat_points_good" in display_df.columns:
 else:
     display_df.insert(0, "rank", range(1, len(display_df) + 1))
 
+# Always display rows in ascending rank order (1, 2, 3, ...), regardless of
+# any other sort applied above (e.g. the show_count sort for Top 15).
+display_df = display_df.sort_values("rank", ascending=True)
+
 # ---------------------------------------------------------------------------
 # Prepare CSV export (display columns, friendly header names)
 # ---------------------------------------------------------------------------
