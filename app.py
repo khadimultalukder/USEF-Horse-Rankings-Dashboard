@@ -872,7 +872,7 @@ def _highlight_changed(df):
         and "nat_points_good" in df.columns
         and "_nat_all_shows" in filtered.columns
     ):
-        changed = df["nat_points_good"].round(4) != filtered["_nat_all_shows"].round(4)
+        changed = df["nat_points_good"].round(4) != filtered["_nat_all_shows"].reindex(df.index).round(4)
         styles.loc[changed, "nat_points_good"] = "background-color: #ff4b4b; color: #ffffff; font-weight: 700;"
     # Dim + amber-tint stale rows (remark present)
     if "remark" in df.columns:
