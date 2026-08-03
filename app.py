@@ -881,6 +881,7 @@ def _highlight_changed(df):
             styles.loc[stale_mask, col] = styles.loc[stale_mask, col] + "; background-color: rgba(245, 158, 11, 0.12); color: #b45309;"
     return styles
 
+pd.set_option("styler.render.max_elements", max(262144, display_df.size + 1))
 styled_df = display_df.style.apply(_highlight_changed, axis=None)
 
 event = st.dataframe(
